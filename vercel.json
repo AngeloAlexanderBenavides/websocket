@@ -1,13 +1,9 @@
 {
-  "functions": {
-    "api/*.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
-  "routes": [
+  "version": 2,
+  "rewrites": [
     {
-      "src": "^/$",
-      "dest": "/html/index.html"
+      "source": "/",
+      "destination": "/html/index.html"
     }
   ]
 }
