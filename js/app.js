@@ -5,12 +5,9 @@ const statusDot = document.getElementById("statusDot");
 const statusText = document.getElementById("statusText");
 const toggleConnectionButton = document.getElementById("toggleConnectionButton");
 
-const clientId = crypto.randomUUID();
-
 let isConnected = false;
-let pusherClient = null;
-let channelSubscription = null;
-let appConfig = null;
+let socketClient = null;
+const socketServerUrl = "wss://websocket-jvqm.onrender.com";
 
 const appendMessage = (text, messageType = "system") => {
   if (!chatBox) {
@@ -54,14 +51,9 @@ const renderConnectionState = () => {
 };
 
 const disconnectRealtime = () => {
-  if (channelSubscription && pusherClient) {
-    pusherClient.unsubscribe(appConfig.channelName);
-    channelSubscription = null;
-  }
-
-  if (pusherClient) {
-    pusherClient.disconnect();
-    pusherClient = null;
+  if (socketClient) {
+    socketClient.close(1000, "Client disconnected");
+    socketClient = null;
   }
 
   isConnected = false;
@@ -73,41 +65,38 @@ const connectRealtime = async () => {
     return;
   }
 
-  if (!window.Pusher) {
-    appendMessage("No se pudo cargar Pusher en el navegador.", "system");
-    return;
-  }
-
   try {
-    if (!appConfig) {
-      const configResponse = await fetch("/api/config");
-      if (!configResponse.ok) {
-        throw new Error("No se pudo obtener la configuracion del servidor");
-      }
+    socketClient = new WebSocket(socketServerUrl);
 
-      appConfig = await configResponse.json();
-    }
-
-    pusherClient = new window.Pusher(appConfig.appKey, {
-      cluster: appConfig.cluster,
-      forceTLS: true,
+    socketClient.addEventListener("open", () => {
+      isConnected = true;
+      renderConnectionState();
+      appendMessage(`Conectado en tiempo real a ${socketServerUrl}`, "system");
     });
 
-    channelSubscription = pusherClient.subscribe(appConfig.channelName);
-    channelSubscription.bind(appConfig.eventName, (payload) => {
-      if (payload.clientId === clientId) {
+    socketClient.addEventListener("message", (event) => {
+      const rawMessage = typeof event.data === "string" ? event.data : "";
+
+      if (!rawMessage.trim()) {
         return;
       }
 
-      appendMessage(payload.message, "received");
+      appendMessage(rawMessage, "received");
     });
 
-    isConnected = true;
-    renderConnectionState();
-    appendMessage("Conectado en tiempo real con Vercel + Pusher.", "system");
+    socketClient.addEventListener("close", () => {
+      isConnected = false;
+      renderConnectionState();
+      appendMessage("Conexion cerrada.", "system");
+      socketClient = null;
+    });
+
+    socketClient.addEventListener("error", () => {
+      appendMessage("Error de conexion con el servidor websocket.", "system");
+    });
   } catch (error) {
     disconnectRealtime();
-    appendMessage(error.message, "system");
+    appendMessage(`No se pudo conectar: ${error.message}`, "system");
   }
 };
 
@@ -137,25 +126,16 @@ if (messageForm && messageInput) {
       return;
     }
 
+    if (!socketClient || socketClient.readyState !== WebSocket.OPEN) {
+      appendMessage("El socket no esta listo para enviar mensajes.", "system");
+      return;
+    }
+
     appendMessage(message, "sent");
     messageInput.value = "";
 
     try {
-      const response = await fetch("/api/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message,
-          sender: "Client",
-          clientId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("No se pudo enviar el mensaje al servidor");
-      }
+      socketClient.send(message);
     } catch (error) {
       appendMessage(error.message, "system");
     }
@@ -164,4 +144,4 @@ if (messageForm && messageInput) {
 
 renderConnectionState();
 appendMessage("Frontend structure is ready.", "system");
-appendMessage("Pulsa Conectar para iniciar chat en tiempo real.", "system");
+appendMessage(`Pulsa Conectar para iniciar chat con ${socketServerUrl}`, "system");
