@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebSocket Client UI</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body>
+    <canvas id="networkCanvas"></canvas>
+
+    <main class="wsCard">
+      <header class="wsHeader">
+        <div class="wsTitle">
+          <h1>WebSocket Client</h1>
+          <div class="wsStatus">
+            <span class="statusDot connected" id="statusDot"></span>
+            <span id="statusText">Conectado</span>
+          </div>
+        </div>
+        <button class="btnToggle" id="toggleConnectionButton" type="button">
+          Desconectar
+        </button>
+      </header>
+
+      <section class="wsChatBox" id="chatBox" aria-live="polite"></section>
+
+      <form class="wsInputArea" id="messageForm">
+        <input
+          type="text"
+          placeholder="Escribe un mensaje..."
+          id="messageInput"
+          autocomplete="off"
+        />
+        <button class="btnSend" id="sendButton" type="submit" title="Enviar mensaje">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+          </svg>
+        </button>
+      </form>
+    </main>
+
+    <script src="../js/networkBackground.js"></script>
+    <script src="../js/app.js"></script>
+  </body>
+</html>
