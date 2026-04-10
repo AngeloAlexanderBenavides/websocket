@@ -35,6 +35,35 @@ const appendMessage = (text, messageType = "system") => {
   chatBox.scrollTop = chatBox.scrollHeight;
 };
 
+const parseIncomingMessage = (rawMessage) => {
+  if (typeof rawMessage !== "string") {
+    return { messageType: "received", text: "" };
+  }
+
+  const trimmedMessage = rawMessage.trim();
+
+  try {
+    const parsedMessage = JSON.parse(trimmedMessage);
+
+    if (parsedMessage && typeof parsedMessage === "object") {
+      const messageText =
+        typeof parsedMessage.texto === "string"
+          ? parsedMessage.texto
+          : typeof parsedMessage.message === "string"
+            ? parsedMessage.message
+            : trimmedMessage;
+
+      const messageType = parsedMessage.tipo === "sistema" ? "system" : "received";
+
+      return { messageType, text: messageText };
+    }
+  } catch (_error) {
+    return { messageType: "received", text: trimmedMessage };
+  }
+
+  return { messageType: "received", text: trimmedMessage };
+};
+
 const renderConnectionState = () => {
   if (!statusDot || !statusText || !toggleConnectionButton || !messageInput || !sendButton) {
     return;
@@ -95,7 +124,13 @@ const connectRealtime = async () => {
         return;
       }
 
-      appendMessage(rawMessage, "received");
+      const incomingMessage = parseIncomingMessage(rawMessage);
+
+      if (!incomingMessage.text) {
+        return;
+      }
+
+      appendMessage(incomingMessage.text, incomingMessage.messageType);
     });
 
     socketClient.addEventListener("close", () => {
@@ -147,7 +182,7 @@ if (messageForm && messageInput) {
       return;
     }
 
-    appendMessage(message, "sent");
+    appendMessage(`Tú: ${message}`, "sent");
     messageInput.value = "";
 
     try {
