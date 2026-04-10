@@ -186,7 +186,13 @@ if (messageForm && messageInput) {
     messageInput.value = "";
 
     try {
-      socketClient.send(message);
+      const outgoingMessage = {
+        tipo: "mensaje",
+        id: Date.now(),
+        texto: message,
+      };
+
+      socketClient.send(JSON.stringify(outgoingMessage));
     } catch (error) {
       appendMessage(error.message, "system");
     }
