@@ -4,9 +4,10 @@ const chatBox = document.getElementById("chatBox");
 const statusDot = document.getElementById("statusDot");
 const statusText = document.getElementById("statusText");
 const toggleConnectionButton = document.getElementById("toggleConnectionButton");
+const sendButton = document.getElementById("sendButton");
 
-let isConnected = false;
 let socketClient = null;
+let connectionState = "disconnected";
 const socketServerUrl = "wss://websocket-jvqm.onrender.com";
 
 const appendMessage = (text, messageType = "system") => {
@@ -35,18 +36,28 @@ const appendMessage = (text, messageType = "system") => {
 };
 
 const renderConnectionState = () => {
-  if (!statusDot || !statusText || !toggleConnectionButton) {
+  if (!statusDot || !statusText || !toggleConnectionButton || !messageInput || !sendButton) {
     return;
   }
 
-  if (isConnected) {
+  if (connectionState === "connected") {
     statusDot.classList.add("connected");
     statusText.textContent = "Conectado";
     toggleConnectionButton.textContent = "Desconectar";
+    messageInput.disabled = false;
+    sendButton.disabled = false;
+  } else if (connectionState === "connecting") {
+    statusDot.classList.remove("connected");
+    statusText.textContent = "Conectando...";
+    toggleConnectionButton.textContent = "Conectando...";
+    messageInput.disabled = true;
+    sendButton.disabled = true;
   } else {
     statusDot.classList.remove("connected");
     statusText.textContent = "Desconectado";
     toggleConnectionButton.textContent = "Conectar";
+    messageInput.disabled = false;
+    sendButton.disabled = false;
   }
 };
 
@@ -56,20 +67,23 @@ const disconnectRealtime = () => {
     socketClient = null;
   }
 
-  isConnected = false;
+  connectionState = "disconnected";
   renderConnectionState();
 };
 
 const connectRealtime = async () => {
-  if (isConnected) {
+  if (connectionState === "connected" || connectionState === "connecting") {
     return;
   }
 
   try {
+    connectionState = "connecting";
+    renderConnectionState();
+
     socketClient = new WebSocket(socketServerUrl);
 
     socketClient.addEventListener("open", () => {
-      isConnected = true;
+      connectionState = "connected";
       renderConnectionState();
       appendMessage(`Conectado en tiempo real a ${socketServerUrl}`, "system");
     });
@@ -85,13 +99,15 @@ const connectRealtime = async () => {
     });
 
     socketClient.addEventListener("close", () => {
-      isConnected = false;
+      connectionState = "disconnected";
       renderConnectionState();
       appendMessage("Conexion cerrada.", "system");
       socketClient = null;
     });
 
     socketClient.addEventListener("error", () => {
+      connectionState = "disconnected";
+      renderConnectionState();
       appendMessage("Error de conexion con el servidor websocket.", "system");
     });
   } catch (error) {
@@ -102,7 +118,7 @@ const connectRealtime = async () => {
 
 if (toggleConnectionButton) {
   toggleConnectionButton.addEventListener("click", async () => {
-    if (isConnected) {
+    if (connectionState === "connected" || connectionState === "connecting") {
       disconnectRealtime();
       appendMessage("Conexion cerrada por el cliente.", "system");
       return;
@@ -121,13 +137,13 @@ if (messageForm && messageInput) {
       return;
     }
 
-    if (!isConnected) {
+    if (connectionState !== "connected") {
       appendMessage("No hay conexion activa. Conectate primero.", "system");
       return;
     }
 
     if (!socketClient || socketClient.readyState !== WebSocket.OPEN) {
-      appendMessage("El socket no esta listo para enviar mensajes.", "system");
+      appendMessage("Aun conectando. Intenta de nuevo en un momento.", "system");
       return;
     }
 
